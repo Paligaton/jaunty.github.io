@@ -1,589 +1,584 @@
-// Events Calendar Application - Main JavaScript Module
+// Беспечный Ереван - Main Application JavaScript
 
-class EventsApp {
+class JauntyYerevanApp {
     constructor() {
         this.events = [];
-        this.filteredEvents = [];
-        this.displayedEvents = [];
-        this.currentPage = 0;
-        this.eventsPerPage = 20;
-        this.categories = new Set();
-        this.isLoading = true;
+        this.venues = [];
+        this.currentTab = 'events';
+        this.currentFilter = 'all';
+        this.currentVenueFilter = 'all';
+        this.selectedDate = null;
         
-        this.searchQuery = '';
-        this.filters = {
-            dateFrom: '',
-            dateTo: '',
-            categories: new Set(),
-            freeOnly: false,
-            hasDiscounts: false
-        };
-
         this.init();
     }
 
     async init() {
-        this.showLoadingSpinner();
-        this.bindEvents();
         await this.loadData();
-        this.setupUI();
-        this.applyFilters();
-    }
-
-    bindEvents() {
-        // Theme toggle
-        document.getElementById('themeToggle').addEventListener('click', this.toggleTheme.bind(this));
-        
-        // Filter toggle (mobile)
-        document.getElementById('filterToggle').addEventListener('click', this.toggleFilters.bind(this));
-        
-        // Search
-        const searchInput = document.getElementById('searchInput');
-        searchInput.addEventListener('input', this.debounce(this.handleSearch.bind(this), 300));
-        searchInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                this.handleSearch(e);
-            }
-        });
-
-        // Filter controls
-        document.getElementById('dateFrom').addEventListener('change', this.handleFilterChange.bind(this));
-        document.getElementById('dateTo').addEventListener('change', this.handleFilterChange.bind(this));
-        document.getElementById('freeEventsOnly').addEventListener('change', this.handleFilterChange.bind(this));
-        document.getElementById('hasDiscounts').addEventListener('change', this.handleFilterChange.bind(this));
-        document.getElementById('clearFilters').addEventListener('click', this.clearFilters.bind(this));
-
-        // Load more button
-        document.getElementById('loadMoreBtn').addEventListener('click', this.loadMoreEvents.bind(this));
-
-        // Modal controls
-        document.getElementById('closeModal').addEventListener('click', this.closeModal.bind(this));
-        document.getElementById('closeContactModal').addEventListener('click', this.closeContactModal.bind(this));
-        document.getElementById('eventModal').addEventListener('click', (e) => {
-            if (e.target.classList.contains('modal__overlay')) {
-                this.closeModal();
-            }
-        });
-        document.getElementById('contactModal').addEventListener('click', (e) => {
-            if (e.target.classList.contains('modal__overlay')) {
-                this.closeContactModal();
-            }
-        });
-
-        // Floating action button
-        document.getElementById('addEventBtn').addEventListener('click', this.showContactModal.bind(this));
-
-        // Keyboard accessibility
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                this.closeModal();
-                this.closeContactModal();
-            }
-        });
-
-        // Infinite scroll
-        window.addEventListener('scroll', this.debounce(this.handleScroll.bind(this), 100));
-    }
-
-    showLoadingSpinner() {
-        const spinner = document.getElementById('loadingSpinner');
-        spinner.style.display = 'flex';
-    }
-
-    hideLoadingSpinner() {
-        const spinner = document.getElementById('loadingSpinner');
-        spinner.style.display = 'none';
+        this.setupEventListeners();
+        this.generateVenues();
+        this.renderCurrentTab();
     }
 
     async loadData() {
-        this.events = this.getDemoData();
-        this.extractCategories();
-        this.isLoading = false;
-        this.hideLoadingSpinner();
+        // Use the provided JSON data
+        this.events = [
+            {
+                "title": "Первый шахматный турнир",
+                "description": "Увлекательный шахматный турнир для всех уровней подготовки. Приходите показать свое мастерство!",
+                "date": "2025-06-28",
+                "time": "15:00:00",
+                "place": "The Shelter",
+                "address": "ул. Туманяна, 31/3",
+                "category": "Развлечения",
+                "free": 1,
+                "link": "https://t.me/easygoing_yerevan",
+                "image": "",
+                "ticket_link": "",
+                "registration_link": ""
+            },
+            {
+                "title": "Реактивный \"Обовсёмквиз\"",
+                "description": "Командная интеллектуальная игра с веселыми вопросами и отличными призами.",
+                "date": "2025-06-29",
+                "time": "19:00:00",
+                "place": "Letters and Numbers",
+                "address": "ул. Абовяна, 12",
+                "category": "Развлечения",
+                "free": "",
+                "link": "https://t.me/easygoing_yerevan",
+                "image": "",
+                "ticket_link": "",
+                "registration_link": ""
+            },
+            {
+                "title": "Арт-вечеринка!",
+                "description": "Творческая вечеринка для всех любителей искусства. Рисование, музыка и отличная компания.",
+                "date": "2025-06-29",
+                "time": "18:00:00",
+                "place": "Мастерская АртЛав",
+                "address": "ул. Сарьяна, 10",
+                "category": "Искусство",
+                "free": "",
+                "link": "https://t.me/easygoing_yerevan",
+                "image": "",
+                "ticket_link": "",
+                "registration_link": ""
+            },
+            {
+                "title": "Сольный стендап: Наташа Будняк",
+                "description": "Яркий стендап-концерт от талантливой комедиантки Наташи Будняк.",
+                "date": "2025-06-29",
+                "time": "20:00:00",
+                "place": "Green room",
+                "address": "ул. Туманяна, 31/3",
+                "category": "Комедия",
+                "free": "",
+                "link": "https://t.me/easygoing_yerevan",
+                "image": "",
+                "ticket_link": "https://ticket-am.com",
+                "registration_link": ""
+            },
+            {
+                "title": "Azat Lake: САП прогулка и купание в лагунах",
+                "description": "Активный отдых на природе с прогулкой на САП-борде и купанием в живописных лагунах.",
+                "date": "2025-06-29",
+                "time": "10:00:00",
+                "place": "Azat Lake",
+                "address": "Озеро Азат",
+                "category": "Здоровье",
+                "free": "",
+                "link": "https://t.me/easygoing_yerevan",
+                "image": "",
+                "ticket_link": "",
+                "registration_link": "https://forms.gle/register"
+            },
+            {
+                "title": "MEETUP сообщества Unicorn Embassy",
+                "description": "Встреча предпринимателей и стартаперов для обмена опытом и нетворкинга.",
+                "date": "2025-06-30",
+                "time": "19:00:00",
+                "place": "Letters and Numbers",
+                "address": "ул. Абовяна, 12",
+                "category": "Бизнес",
+                "free": 1,
+                "link": "https://t.me/easygoing_yerevan",
+                "image": "",
+                "ticket_link": "",
+                "registration_link": "https://forms.gle/unicorn"
+            },
+            {
+                "title": "Витражи",
+                "description": "Мастер-класс по изготовлению витражей. Научитесь создавать красивые произведения искусства своими руками.",
+                "date": "2025-07-01",
+                "time": "16:00:00",
+                "place": "Мастерская АртЛав",
+                "address": "ул. Сарьяна, 10",
+                "category": "Мастер-класс",
+                "free": "",
+                "link": "https://t.me/easygoing_yerevan",
+                "image": "",
+                "ticket_link": "",
+                "registration_link": "https://forms.gle/art"
+            },
+            {
+                "title": "Концерт Земфиры в Ереване",
+                "description": "Долгожданный концерт легендарной российской певицы Земфиры в Ереване.",
+                "date": "2025-07-04",
+                "time": "19:00:00",
+                "place": "Стадион Раздан",
+                "address": "ул. Царав Ахпюр, 1",
+                "category": "Концерт",
+                "free": "",
+                "link": "https://t.me/easygoing_yerevan",
+                "image": "",
+                "ticket_link": "https://ticket-am.com/zemfira",
+                "registration_link": ""
+            },
+            {
+                "title": "LUYS Festival",
+                "description": "Многодневный музыкальный фестиваль с участием местных и международных артистов.",
+                "date": "2025-07-05",
+                "time": "15:00:00",
+                "place": "Парк Ахтанак",
+                "address": "ул. Маршала Баграмяна",
+                "category": "Фестиваль",
+                "free": "",
+                "link": "https://t.me/easygoing_yerevan",
+                "image": "",
+                "ticket_link": "https://luys-festival.com",
+                "registration_link": ""
+            },
+            {
+                "title": "Siren Jam",
+                "description": "Джем-сейшн для музыкантов всех уровней. Приходите играть и слушать живую музыку.",
+                "date": "2025-07-06",
+                "time": "21:00:00",
+                "place": "Green room",
+                "address": "ул. Туманяна, 31/3",
+                "category": "Музыка",
+                "free": 1,
+                "link": "https://t.me/easygoing_yerevan",
+                "image": "",
+                "ticket_link": "",
+                "registration_link": ""
+            }
+        ];
+
+        // Sort events by date
+        this.events.sort((a, b) => new Date(a.date + 'T' + a.time) - new Date(b.date + 'T' + b.time));
     }
 
-    getDemoData() {
-        // Demo data for testing purposes
-        const today = new Date();
-        const tomorrow = new Date(today);
-        tomorrow.setDate(today.getDate() + 1);
-        const nextWeek = new Date(today);
-        nextWeek.setDate(today.getDate() + 7);
-
-        return [
-            {
-                id: 1,
-                title: 'Концерт классической музыки',
-                description: 'Вечер классической музыки с произведениями Баха, Моцарта и Бетховена в исполнении Ереванского симфонического оркестра.',
-                date: tomorrow,
-                time: '19:00',
-                place: 'Ереванский оперный театр',
-                address: 'пл. Свободы, 1, Ереван',
-                category: 'Музыка',
-                isFree: false,
-                discounts: 'Скидка 20% для студентов',
-                link: 'https://t.me/yerevan_events',
-                linkToBuy: 'https://example.com/buy',
-                linkToRegistration: '',
-                image: ''
-            },
-            {
-                id: 2,
-                title: 'Выставка современного искусства',
-                description: 'Новая выставка работ современных армянских художников. Представлены картины, скульптуры и инсталляции.',
-                date: new Date(today.getTime() + 2 * 24 * 60 * 60 * 1000),
-                time: '10:00',
-                place: 'Национальная галерея Армении',
-                address: 'ул. Арама, 1, Ереван',
-                category: 'Искусство',
-                isFree: true,
-                discounts: '',
-                link: 'https://t.me/yerevan_events',
-                linkToBuy: '',
-                linkToRegistration: 'https://example.com/register',
-                image: ''
-            },
-            {
-                id: 3,
-                title: 'Спектакль "Гамлет"',
-                description: 'Классическая драма Шекспира в постановке Ереванского театра им. Сундукяна.',
-                date: new Date(today.getTime() + 3 * 24 * 60 * 60 * 1000),
-                time: '20:00',
-                place: 'Театр им. Сундукяна',
-                address: 'ул. Теряна, 7, Ереван',
-                category: 'Театр',
-                isFree: false,
-                discounts: '',
-                link: 'https://t.me/yerevan_events',
-                linkToBuy: 'https://example.com/buy',
-                linkToRegistration: '',
-                image: ''
-            },
-            {
-                id: 4,
-                title: 'Джазовый фестиваль',
-                description: 'Международный джазовый фестиваль с участием известных музыкантов из разных стран.',
-                date: nextWeek,
-                time: '18:00',
-                place: 'Парк Ахтанак',
-                address: 'ул. Маршала Баграмяна, Ереван',
-                category: 'Музыка',
-                isFree: true,
-                discounts: '',
-                link: 'https://t.me/yerevan_events',
-                linkToBuy: '',
-                linkToRegistration: 'https://example.com/register',
-                image: ''
-            },
-            {
-                id: 5,
-                title: 'Кулинарный мастер-класс',
-                description: 'Изучаем традиционную армянскую кухню: долма, хаш, лаваш и другие национальные блюда.',
-                date: new Date(today.getTime() + 5 * 24 * 60 * 60 * 1000),
-                time: '14:00',
-                place: 'Кулинарная школа "Арарат"',
-                address: 'ул. Абовяна, 10, Ереван',
-                category: 'Кулинария',
-                isFree: false,
-                discounts: 'Скидка 15% при записи за неделю',
-                link: 'https://t.me/yerevan_events',
-                linkToBuy: 'https://example.com/buy',
-                linkToRegistration: '',
-                image: ''
-            }
+    generateVenues() {
+        this.venues = [
+            { name: "The Shelter", short: "S", address: "ул. Туманяна, 31/3", hours: "18:00-02:00", tags: ["drink", "dance", "late", "events"] },
+            { name: "Letters and Numbers", short: "L&N", address: "ул. Абовяна, 12", hours: "10:00-22:00", tags: ["coffee", "eat", "events"] },
+            { name: "Green Room", short: "GR", address: "ул. Туманяна, 31/3", hours: "19:00-02:00", tags: ["drink", "dance", "events", "late"] },
+            { name: "Мастерская АртЛав", short: "AL", address: "ул. Сарьяна, 10", hours: "12:00-20:00", tags: ["events"] },
+            { name: "Dargett Craft Beer", short: "DCB", address: "ул. Сарьяна, 5", hours: "16:00-01:00", tags: ["drink", "craft", "late"] },
+            { name: "Calumet Ethnic Lounge Bar", short: "C", address: "ул. Московская, 15", hours: "18:00-02:00", tags: ["drink", "hookah", "date", "late"] },
+            { name: "Pandok", short: "P", address: "ул. Пушкина, 8", hours: "12:00-24:00", tags: ["eat", "drink", "date"] },
+            { name: "Bourbon Street", short: "BS", address: "ул. Абовяна, 20", hours: "19:00-03:00", tags: ["drink", "dance", "late"] },
+            { name: "Coffee Central", short: "CC", address: "ул. Северный проспект, 2", hours: "07:00-21:00", tags: ["coffee"] },
+            { name: "Black Angus", short: "BA", address: "ул. Теряна, 10", hours: "12:00-23:00", tags: ["eat", "burger"] },
+            { name: "Wine Republic", short: "WR", address: "ул. Сарьяна, 25", hours: "17:00-01:00", tags: ["drink", "date", "late"] },
+            { name: "Jazzve", short: "J", address: "ул. Московская, 3", hours: "08:00-20:00", tags: ["coffee"] }
         ];
     }
 
-    processEventData(rawData) {
-        return rawData
-            .map((row, index) => {
-                // Skip rows without required fields
-                if (!row.Title || !row.DateValue) {
-                    return null;
-                }
+    setupEventListeners() {
+        // Tab navigation
+        document.querySelectorAll('.nav-tab').forEach(tab => {
+            tab.addEventListener('click', (e) => this.switchTab(e.target.dataset.tab));
+        });
 
-                const event = {
-                    id: index,
-                    title: row.Title || '',
-                    description: row.Description || '',
-                    date: this.parseDate(row.DateValue, row.TimeValue),
-                    time: row.TimeValue || '00:00',
-                    place: row.place || '',
-                    address: row.address || '',
-                    category: row['Категория'] || 'Другое',
-                    isFree: Boolean(row['Бесплатно']),
-                    discounts: row['Скидки'] || '',
-                    link: row.link || '',
-                    linkToBuy: row.linkToBuy || '',
-                    linkToRegistration: row.linkToRegistarion || '',
-                    image: this.processImageUrl(row.image || '')
-                };
+        // Category filters
+        document.querySelectorAll('.category-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => this.setFilter(e.target.dataset.category));
+        });
 
-                return event;
-            })
-            .filter(event => event !== null)
-            .filter(event => event.date >= new Date()) // Only future events
-            .sort((a, b) => a.date - b.date); // Sort by date ascending
-    }
+        // Venue filters
+        document.querySelectorAll('.venue-filter-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => this.setVenueFilter(e.target.dataset.filter));
+        });
 
-    parseDate(dateValue, timeValue = '00:00') {
-        try {
-            let dateStr = dateValue;
-            
-            // Handle different date formats
-            if (typeof dateValue === 'number') {
-                // Excel date serial number
-                const excelEpoch = new Date(1900, 0, 1);
-                const date = new Date(excelEpoch.getTime() + (dateValue - 2) * 24 * 60 * 60 * 1000);
-                dateStr = date.toISOString().split('T')[0];
-            }
-
-            const [hours = '00', minutes = '00'] = timeValue.split(':');
-            const combinedDateTime = `${dateStr}T${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}:00`;
-            
-            return new Date(combinedDateTime);
-        } catch (error) {
-            console.error('Ошибка парсинга даты:', error);
-            return new Date();
+        // Modal controls
+        const closeBtn = document.getElementById('close-modal');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => this.closeModal());
         }
+
+        const modal = document.getElementById('event-modal');
+        if (modal) {
+            modal.addEventListener('click', (e) => {
+                if (e.target.classList.contains('modal__overlay') || e.target.classList.contains('modal')) {
+                    this.closeModal();
+                }
+            });
+        }
+
+        // Footer actions
+        const fullscreenBtn = document.getElementById('fullscreen-btn');
+        if (fullscreenBtn) {
+            fullscreenBtn.addEventListener('click', () => this.toggleFullscreen());
+        }
+
+        const shareBtn = document.getElementById('share-btn');
+        if (shareBtn) {
+            shareBtn.addEventListener('click', () => this.shareApp());
+        }
+
+        // Keyboard controls
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                this.closeModal();
+            }
+        });
     }
 
-    processImageUrl(imageUrl) {
-        if (!imageUrl) return '';
+    switchTab(tabName) {
+        this.currentTab = tabName;
         
-        // Convert Google Drive links to direct image URLs
-        const driveMatch = imageUrl.match(/file\/d\/([a-zA-Z0-9_-]+)/);
-        if (driveMatch) {
-            return `https://drive.google.com/uc?id=${driveMatch[1]}`;
+        // Update tab buttons
+        document.querySelectorAll('.nav-tab').forEach(tab => {
+            tab.classList.remove('active');
+        });
+        const activeTab = document.querySelector(`[data-tab="${tabName}"]`);
+        if (activeTab) {
+            activeTab.classList.add('active');
         }
+
+        // Update tab content
+        document.querySelectorAll('.tab-content').forEach(content => {
+            content.classList.remove('active');
+        });
+        const activeContent = document.getElementById(`${tabName}-tab`);
+        if (activeContent) {
+            activeContent.classList.add('active');
+        }
+
+        this.renderCurrentTab();
+    }
+
+    setFilter(category) {
+        this.currentFilter = category;
         
-        return imageUrl;
-    }
-
-    extractCategories() {
-        this.categories.clear();
-        this.events.forEach(event => {
-            if (event.category) {
-                this.categories.add(event.category);
-            }
+        // Update filter buttons
+        document.querySelectorAll('.category-btn').forEach(btn => {
+            btn.classList.remove('active');
         });
-    }
-
-    setupUI() {
-        this.renderCategoryFilters();
-        this.applyFilters();
-    }
-
-    renderCategoryFilters() {
-        const container = document.getElementById('categoryFilters');
-        container.innerHTML = '';
-
-        Array.from(this.categories).sort().forEach(category => {
-            const label = document.createElement('label');
-            label.className = 'checkbox-label';
-            
-            const checkbox = document.createElement('input');
-            checkbox.type = 'checkbox';
-            checkbox.value = category;
-            checkbox.addEventListener('change', () => this.handleCategoryFilter(checkbox));
-            
-            const checkmark = document.createElement('span');
-            checkmark.className = 'checkmark';
-            
-            label.appendChild(checkbox);
-            label.appendChild(checkmark);
-            label.appendChild(document.createTextNode(category));
-            
-            container.appendChild(label);
-        });
-    }
-
-    handleCategoryFilter(checkbox) {
-        if (checkbox.checked) {
-            this.filters.categories.add(checkbox.value);
-        } else {
-            this.filters.categories.delete(checkbox.value);
+        const activeBtn = document.querySelector(`[data-category="${category}"]`);
+        if (activeBtn) {
+            activeBtn.classList.add('active');
         }
-        this.applyFilters();
-    }
-
-    handleSearch(e) {
-        this.searchQuery = e.target.value.toLowerCase().trim();
-        this.applyFilters();
-    }
-
-    handleFilterChange() {
-        this.filters.dateFrom = document.getElementById('dateFrom').value;
-        this.filters.dateTo = document.getElementById('dateTo').value;
-        this.filters.freeOnly = document.getElementById('freeEventsOnly').checked;
-        this.filters.hasDiscounts = document.getElementById('hasDiscounts').checked;
-        this.applyFilters();
-    }
-
-    applyFilters() {
-        this.filteredEvents = this.events.filter(event => {
-            // Search filter
-            if (this.searchQuery) {
-                const searchText = `${event.title} ${event.description} ${event.place}`.toLowerCase();
-                if (!searchText.includes(this.searchQuery)) {
-                    return false;
-                }
-            }
-
-            // Date range filter
-            if (this.filters.dateFrom) {
-                const fromDate = new Date(this.filters.dateFrom);
-                if (event.date < fromDate) {
-                    return false;
-                }
-            }
-
-            if (this.filters.dateTo) {
-                const toDate = new Date(this.filters.dateTo);
-                toDate.setHours(23, 59, 59, 999); // End of day
-                if (event.date > toDate) {
-                    return false;
-                }
-            }
-
-            // Category filter
-            if (this.filters.categories.size > 0) {
-                if (!this.filters.categories.has(event.category)) {
-                    return false;
-                }
-            }
-
-            // Free events filter
-            if (this.filters.freeOnly && !event.isFree) {
-                return false;
-            }
-
-            // Has discounts filter
-            if (this.filters.hasDiscounts && !event.discounts) {
-                return false;
-            }
-
-            return true;
-        });
-
-        this.currentPage = 0;
-        this.displayedEvents = [];
-        this.loadMoreEvents();
-    }
-
-    loadMoreEvents() {
-        const startIndex = this.currentPage * this.eventsPerPage;
-        const endIndex = startIndex + this.eventsPerPage;
-        const newEvents = this.filteredEvents.slice(startIndex, endIndex);
-
-        this.displayedEvents.push(...newEvents);
-        this.currentPage++;
 
         this.renderEvents();
-        this.updateLoadMoreButton();
     }
 
-    renderEvents() {
-        const container = document.getElementById('eventsGrid');
-        const emptyState = document.getElementById('emptyState');
+    setVenueFilter(filter) {
+        this.currentVenueFilter = filter;
+        
+        // Update filter buttons
+        document.querySelectorAll('.venue-filter-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        const activeBtn = document.querySelector(`[data-filter="${filter}"]`);
+        if (activeBtn) {
+            activeBtn.classList.add('active');
+        }
 
-        if (this.displayedEvents.length === 0) {
-            container.innerHTML = '';
-            emptyState.classList.remove('hidden');
+        this.renderVenues();
+    }
+
+    renderCurrentTab() {
+        switch (this.currentTab) {
+            case 'events':
+                this.renderEventsTab();
+                break;
+            case 'venues':
+                this.renderVenues();
+                break;
+            case 'calendar':
+                this.renderCalendar();
+                break;
+        }
+    }
+
+    renderEventsTab() {
+        this.renderTodayEvents();
+        this.renderRecommendations();
+        this.renderEvents();
+    }
+
+    renderTodayEvents() {
+        const today = new Date().toISOString().split('T')[0];
+        const todayEvents = this.events.filter(event => event.date === today);
+        const container = document.getElementById('today-events');
+
+        if (!container) return;
+
+        if (todayEvents.length === 0) {
+            container.innerHTML = '<div class="no-events"><h3>Сегодня событий нет</h3><p>Проверьте завтрашние события</p></div>';
             return;
         }
 
-        emptyState.classList.add('hidden');
+        container.innerHTML = todayEvents.map(event => this.createEventHTML(event)).join('');
+        this.attachEventListeners(container);
+    }
 
-        if (this.currentPage === 1) {
-            container.innerHTML = '';
+    renderRecommendations() {
+        const recommendations = [
+            {
+                title: "The Shelter",
+                description: "Скидка 20% на все коктейли до 21:00",
+                meta: "Коктейль-бар • ул. Туманяна, 31/3"
+            },
+            {
+                title: "Letters and Numbers",
+                description: "Бесплатный кофе при заказе десерта",
+                meta: "Кафе • ул. Абовяна, 12"
+            },
+            {
+                title: "Green Room",
+                description: "Живая музыка каждую пятницу",
+                meta: "Бар • ул. Туманяна, 31/3"
+            },
+            {
+                title: "Dargett Craft Beer",
+                description: "Новое крафтовое пиво от местной пивоварни",
+                meta: "Крафтовое пиво • ул. Сарьяна, 5"
+            }
+        ];
+
+        const container = document.getElementById('recommendations');
+        if (!container) return;
+
+        container.innerHTML = recommendations.map(rec => `
+            <div class="recommendation-item">
+                <h3 class="recommendation-item__title">${rec.title}</h3>
+                <p class="recommendation-item__description">${rec.description}</p>
+                <div class="recommendation-item__meta">${rec.meta}</div>
+            </div>
+        `).join('');
+    }
+
+    renderEvents() {
+        let filteredEvents = this.events;
+        
+        if (this.currentFilter !== 'all') {
+            filteredEvents = this.events.filter(event => event.category === this.currentFilter);
         }
 
-        this.displayedEvents.slice((this.currentPage - 1) * this.eventsPerPage).forEach(event => {
-            const eventCard = this.createEventCard(event);
-            container.appendChild(eventCard);
+        const container = document.getElementById('all-events');
+        if (!container) return;
+        
+        if (filteredEvents.length === 0) {
+            container.innerHTML = '<div class="no-events"><h3>События не найдены</h3><p>Попробуйте выбрать другую категорию</p></div>';
+            return;
+        }
+
+        container.innerHTML = filteredEvents.map(event => this.createEventHTML(event)).join('');
+        this.attachEventListeners(container);
+    }
+
+    renderVenues() {
+        let filteredVenues = this.venues;
+        
+        if (this.currentVenueFilter !== 'all') {
+            filteredVenues = this.venues.filter(venue => venue.tags.includes(this.currentVenueFilter));
+        }
+
+        const container = document.getElementById('venues-list');
+        if (!container) return;
+        
+        if (filteredVenues.length === 0) {
+            container.innerHTML = '<div class="no-events"><h3>Заведения не найдены</h3><p>Попробуйте выбрать другой фильтр</p></div>';
+            return;
+        }
+
+        container.innerHTML = filteredVenues.map(venue => `
+            <div class="venue-item">
+                <div class="venue-item__header">
+                    <h3 class="venue-item__name">${venue.name}</h3>
+                    <span class="venue-item__short">${venue.short}</span>
+                </div>
+                <div class="venue-item__address">${venue.address}</div>
+                <div class="venue-item__hours">Часы работы: ${venue.hours}</div>
+            </div>
+        `).join('');
+    }
+
+    renderCalendar() {
+        // Generate unique dates from events
+        const dates = [...new Set(this.events.map(event => event.date))].sort();
+        
+        const calendarContainer = document.getElementById('calendar-dates');
+        if (!calendarContainer) return;
+
+        calendarContainer.innerHTML = dates.map(date => {
+            const dateObj = new Date(date + 'T00:00:00');
+            const formattedDate = this.formatCalendarDate(dateObj);
+            return `
+                <div class="calendar-date ${this.selectedDate === date ? 'active' : ''}" data-date="${date}">
+                    ${formattedDate}
+                </div>
+            `;
+        }).join('');
+
+        // Add event listeners for date selection
+        document.querySelectorAll('.calendar-date').forEach(dateEl => {
+            dateEl.addEventListener('click', (e) => {
+                document.querySelectorAll('.calendar-date').forEach(d => d.classList.remove('active'));
+                e.target.classList.add('active');
+                this.selectedDate = e.target.dataset.date;
+                this.renderCalendarEvents();
+            });
+        });
+
+        // Show events for first date by default
+        if (dates.length > 0 && !this.selectedDate) {
+            this.selectedDate = dates[0];
+            const firstDate = document.querySelector('.calendar-date');
+            if (firstDate) {
+                firstDate.classList.add('active');
+            }
+        }
+        
+        this.renderCalendarEvents();
+    }
+
+    renderCalendarEvents() {
+        if (!this.selectedDate) return;
+
+        const dateEvents = this.events.filter(event => event.date === this.selectedDate);
+        const container = document.getElementById('calendar-events');
+        if (!container) return;
+
+        if (dateEvents.length === 0) {
+            container.innerHTML = '<div class="no-events"><h3>На эту дату событий нет</h3></div>';
+            return;
+        }
+
+        container.innerHTML = dateEvents.map(event => this.createEventHTML(event)).join('');
+        this.attachEventListeners(container);
+    }
+
+    createEventHTML(event) {
+        const dateTime = this.formatDateTime(event.date, event.time);
+        const isFree = event.free == 1;
+        
+        // Escape quotes and special characters for JSON storage in data attribute
+        const eventJson = JSON.stringify(event).replace(/"/g, '&quot;');
+        
+        return `
+            <div class="event-item" data-event="${eventJson}">
+                <div class="event-item__header">
+                    <h3 class="event-item__title">${event.title}</h3>
+                    <div class="event-item__date">${dateTime}</div>
+                </div>
+                <div class="event-item__meta">
+                    <div class="event-item__place">${event.place}</div>
+                    <div class="event-item__category">${event.category}</div>
+                </div>
+                <div class="event-item__description">${event.description}</div>
+                <div class="event-item__badges">
+                    ${isFree ? '<span class="event-badge event-badge--free">Бесплатно</span>' : ''}
+                </div>
+            </div>
+        `;
+    }
+
+    attachEventListeners(container) {
+        if (!container) return;
+        
+        container.querySelectorAll('.event-item').forEach(item => {
+            item.addEventListener('click', () => {
+                try {
+                    const eventJson = item.dataset.event.replace(/&quot;/g, '"');
+                    const eventData = JSON.parse(eventJson);
+                    this.showEventModal(eventData);
+                } catch (error) {
+                    console.error('Error parsing event data:', error);
+                }
+            });
         });
     }
 
-    createEventCard(event) {
-        const card = document.createElement('div');
-        card.className = 'event-card';
-        card.addEventListener('click', () => this.showEventDetail(event));
-
-        const formattedDate = this.formatDate(event.date);
-        const badges = this.createEventBadges(event);
-
-        card.innerHTML = `
-            <div class="event-card__image">
-                ${event.image ? 
-                    `<img src="${event.image}" alt="${event.title}" onerror="this.parentElement.innerHTML='<div class=\\"event-card__placeholder\\">📅</div>'">` :
-                    '<div class="event-card__placeholder">📅</div>'
-                }
+    showEventModal(event) {
+        const modal = document.getElementById('event-modal');
+        const modalBody = document.getElementById('modal-body');
+        
+        if (!modal || !modalBody) return;
+        
+        const dateTime = this.formatDateTime(event.date, event.time);
+        const isFree = event.free == 1;
+        
+        modalBody.innerHTML = `
+            <h2>${event.title}</h2>
+            <div style="margin-bottom: 20px;">
+                <p><strong>Дата и время:</strong> ${dateTime}</p>
+                <p><strong>Место:</strong> ${event.place}</p>
+                <p><strong>Адрес:</strong> ${event.address}</p>
+                <p><strong>Категория:</strong> ${event.category}</p>
+                ${isFree ? '<p><strong>Вход:</strong> Бесплатно</p>' : ''}
             </div>
-            <div class="event-card__content">
-                <div class="event-card__header">
-                    <h3 class="event-card__title">${event.title}</h3>
-                    <div class="event-card__datetime">${formattedDate}</div>
-                    <div class="event-card__place">${event.place}</div>
-                </div>
-                <div class="event-card__badges">
-                    ${badges}
-                </div>
-            </div>
-        `;
-
-        return card;
-    }
-
-    createEventBadges(event) {
-        let badges = '';
-
-        if (event.category) {
-            badges += `<span class="event-badge event-badge--category">${event.category}</span>`;
-        }
-
-        if (event.isFree) {
-            badges += `<span class="event-badge event-badge--free">Бесплатно</span>`;
-        }
-
-        if (event.discounts) {
-            badges += `<span class="event-badge event-badge--discount">Скидки</span>`;
-        }
-
-        return badges;
-    }
-
-    showEventDetail(event) {
-        const modal = document.getElementById('eventModal');
-        const detailContainer = document.getElementById('eventDetail');
-
-        const formattedDate = this.formatDate(event.date);
-        const mapUrl = this.generateMapUrl(event.address);
-
-        detailContainer.innerHTML = `
-            <div class="event-detail__image">
-                ${event.image ? 
-                    `<img src="${event.image}" alt="${event.title}" onerror="this.style.display='none'">` :
-                    ''
-                }
-            </div>
-            <div class="event-detail__header">
-                <h2 class="event-detail__title">${event.title}</h2>
-                <div class="event-detail__meta">
-                    <div class="event-detail__meta-item">
-                        <span class="event-detail__meta-label">Дата и время</span>
-                        <span class="event-detail__meta-value">${formattedDate}</span>
-                    </div>
-                    <div class="event-detail__meta-item">
-                        <span class="event-detail__meta-label">Место</span>
-                        <span class="event-detail__meta-value">${event.place}</span>
-                    </div>
-                    <div class="event-detail__meta-item">
-                        <span class="event-detail__meta-label">Адрес</span>
-                        <span class="event-detail__meta-value">${event.address}</span>
-                    </div>
-                    <div class="event-detail__meta-item">
-                        <span class="event-detail__meta-label">Категория</span>
-                        <span class="event-detail__meta-value">${event.category}</span>
-                    </div>
-                    ${event.isFree ? `
-                    <div class="event-detail__meta-item">
-                        <span class="event-detail__meta-label">Стоимость</span>
-                        <span class="event-detail__meta-value">Бесплатно</span>
-                    </div>
-                    ` : ''}
-                    ${event.discounts ? `
-                    <div class="event-detail__meta-item">
-                        <span class="event-detail__meta-label">Скидки</span>
-                        <span class="event-detail__meta-value">${event.discounts}</span>
-                    </div>
-                    ` : ''}
-                </div>
-            </div>
-            ${event.description ? `
-            <div class="event-detail__description">
+            <div style="margin-bottom: 20px;">
                 <p>${event.description}</p>
             </div>
-            ` : ''}
-            ${event.address ? `
-            <div class="event-detail__map">
-                <iframe src="${mapUrl}" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
-            </div>
-            ` : ''}
-            <div class="event-detail__actions">
+            <div class="event-actions" style="display: flex; gap: 10px; flex-wrap: wrap;">
                 ${event.link ? `<a href="${event.link}" target="_blank" class="btn btn--primary">Открыть в Telegram</a>` : ''}
-                ${event.linkToBuy ? `<a href="${event.linkToBuy}" target="_blank" class="btn btn--secondary">Купить билет</a>` : ''}
-                ${event.linkToRegistration ? `<a href="${event.linkToRegistration}" target="_blank" class="btn btn--secondary">Регистрация</a>` : ''}
-                <button onclick="app.addToCalendar(${event.id})" class="btn btn--outline">Добавить в календарь</button>
+                ${event.ticket_link ? `<a href="${event.ticket_link}" target="_blank" class="btn btn--secondary">Купить билет</a>` : ''}
+                ${event.registration_link ? `<a href="${event.registration_link}" target="_blank" class="btn btn--secondary">Регистрация</a>` : ''}
             </div>
         `;
-
-        modal.classList.remove('hidden');
+        
+        modal.classList.add('active');
         document.body.style.overflow = 'hidden';
     }
 
     closeModal() {
-        const modal = document.getElementById('eventModal');
-        modal.classList.add('hidden');
-        document.body.style.overflow = '';
+        const modal = document.getElementById('event-modal');
+        if (modal) {
+            modal.classList.remove('active');
+            document.body.style.overflow = '';
+        }
     }
 
-    showContactModal() {
-        const modal = document.getElementById('contactModal');
-        modal.classList.remove('hidden');
-        document.body.style.overflow = 'hidden';
+    toggleFullscreen() {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(err => {
+                console.log('Fullscreen not supported');
+            });
+        } else {
+            document.exitFullscreen();
+        }
     }
 
-    closeContactModal() {
-        const modal = document.getElementById('contactModal');
-        modal.classList.add('hidden');
-        document.body.style.overflow = '';
+    shareApp() {
+        if (navigator.share) {
+            navigator.share({
+                title: 'Беспечный Ереван',
+                text: 'Рекомендации заведений и анонсы событий Еревана',
+                url: window.location.href
+            });
+        } else {
+            // Fallback: copy to clipboard
+            navigator.clipboard.writeText(window.location.href).then(() => {
+                alert('Ссылка скопирована в буфер обмена!');
+            }).catch(() => {
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = window.location.href;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                alert('Ссылка скопирована в буфер обмена!');
+            });
+        }
     }
 
-    addToCalendar(eventId) {
-        const event = this.events.find(e => e.id === eventId);
-        if (!event) return;
-
-        const startDate = new Date(event.date);
-        const endDate = new Date(startDate.getTime() + 2 * 60 * 60 * 1000); // Default 2 hours duration
-
-        const icsContent = [
-            'BEGIN:VCALENDAR',
-            'VERSION:2.0',
-            'PRODID:-//Yerevan Afisha//Event//RU',
-            'BEGIN:VEVENT',
-            `UID:${event.id}@afisha.am`,
-            `DTSTART:${this.formatDateForICS(startDate)}`,
-            `DTEND:${this.formatDateForICS(endDate)}`,
-            `SUMMARY:${event.title}`,
-            `DESCRIPTION:${event.description}`,
-            `LOCATION:${event.place}, ${event.address}`,
-            'END:VEVENT',
-            'END:VCALENDAR'
-        ].join('\r\n');
-
-        const blob = new Blob([icsContent], { type: 'text/calendar' });
-        const url = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `${event.title.replace(/[^a-zA-Z0-9]/g, '_')}.ics`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(url);
-    }
-
-    formatDateForICS(date) {
-        return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
-    }
-
-    generateMapUrl(address) {
-        if (!address) return '';
-        const encodedAddress = encodeURIComponent(`${address}, Yerevan, Armenia`);
-        return `https://www.google.com/maps/embed/v1/place?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dO0G1lOm9g-y5E&q=${encodedAddress}`;
-    }
-
-    formatDate(date) {
+    formatDateTime(date, time) {
+        const dateObj = new Date(date + 'T' + time);
         const options = {
             day: 'numeric',
             month: 'long',
@@ -591,95 +586,23 @@ class EventsApp {
             hour: '2-digit',
             minute: '2-digit'
         };
-        return date.toLocaleDateString('ru-RU', options);
+        return dateObj.toLocaleDateString('ru-RU', options);
     }
 
-    updateLoadMoreButton() {
-        const button = document.getElementById('loadMoreBtn');
-        const container = document.getElementById('loadMoreContainer');
+    formatCalendarDate(dateObj) {
+        const weekdays = ['воскресенье', 'понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота'];
+        const months = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
         
-        if (this.displayedEvents.length >= this.filteredEvents.length) {
-            container.style.display = 'none';
-        } else {
-            container.style.display = 'flex';
-        }
-    }
-
-    clearFilters() {
-        // Reset form controls
-        document.getElementById('dateFrom').value = '';
-        document.getElementById('dateTo').value = '';
-        document.getElementById('freeEventsOnly').checked = false;
-        document.getElementById('hasDiscounts').checked = false;
-        document.getElementById('searchInput').value = '';
-
-        // Reset category checkboxes
-        document.querySelectorAll('#categoryFilters input[type="checkbox"]').forEach(cb => {
-            cb.checked = false;
-        });
-
-        // Reset internal state
-        this.searchQuery = '';
-        this.filters = {
-            dateFrom: '',
-            dateTo: '',
-            categories: new Set(),
-            freeOnly: false,
-            hasDiscounts: false
-        };
-
-        this.applyFilters();
-    }
-
-    toggleTheme() {
-        const currentTheme = document.documentElement.getAttribute('data-color-scheme');
-        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        const weekday = weekdays[dateObj.getDay()];
+        const month = months[dateObj.getMonth()];
+        const day = dateObj.getDate();
+        const year = dateObj.getFullYear();
         
-        document.documentElement.setAttribute('data-color-scheme', newTheme);
-        
-        const themeIcon = document.querySelector('.theme-icon');
-        themeIcon.textContent = newTheme === 'dark' ? '☀️' : '🌙';
-    }
-
-    toggleFilters() {
-        const filterPanel = document.getElementById('filterPanel');
-        filterPanel.classList.toggle('mobile-hidden');
-    }
-
-    handleScroll() {
-        const scrollPosition = window.innerHeight + window.scrollY;
-        const documentHeight = document.documentElement.offsetHeight;
-        
-        if (scrollPosition >= documentHeight - 1000) {
-            if (this.displayedEvents.length < this.filteredEvents.length) {
-                this.loadMoreEvents();
-            }
-        }
-    }
-
-    showError(message) {
-        this.hideLoadingSpinner();
-        const container = document.getElementById('eventsGrid');
-        container.innerHTML = `
-            <div class="empty-state">
-                <h3>Ошибка</h3>
-                <p>${message}</p>
-            </div>
-        `;
-    }
-
-    debounce(func, wait) {
-        let timeout;
-        return function executedFunction(...args) {
-            const later = () => {
-                clearTimeout(timeout);
-                func(...args);
-            };
-            clearTimeout(timeout);
-            timeout = setTimeout(later, wait);
-        };
+        return `${weekday}, ${day} ${month} ${year}`;
     }
 }
 
-// Initialize the application
-const app = new EventsApp();
+// Initialize the application when DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+    window.jauntyApp = new JauntyYerevanApp();
+});
